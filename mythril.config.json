@@ -1,9 +1,0 @@
-{
-    "remappings": [
-        "forge-std/=lib/forge-std/src/"
-    ],
-    "optimizer": {
-        "enabled": true,
-        "runs": 200
-    }
-}

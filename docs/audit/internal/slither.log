@@ -1,0 +1,141 @@
+'forge clean' running (wd: /Users/theo/code/else/talentx-x-market)
+'forge config --json' running
+'forge build --build-info --skip ./test/** ./script/** --force' running (wd: /Users/theo/code/else/talentx-x-market)
+INFO:Detectors:
+Detector: unchecked-transfer
+LendingMarket.supply(uint256) (src/LendingMarket.sol#156-167) ignores return value by baseToken.transferFrom(msg.sender,address(this),amount) (src/LendingMarket.sol#160)
+LendingMarket.withdraw(uint256) (src/LendingMarket.sol#169-182) ignores return value by baseToken.transfer(msg.sender,amount) (src/LendingMarket.sol#179)
+LendingMarket.supplyCollateral(uint256) (src/LendingMarket.sol#188-197) ignores return value by collateralToken.transferFrom(msg.sender,address(this),amount) (src/LendingMarket.sol#191)
+LendingMarket.withdrawCollateral(uint256) (src/LendingMarket.sol#199-211) ignores return value by collateralToken.transfer(msg.sender,amount) (src/LendingMarket.sol#208)
+LendingMarket.borrow(uint256) (src/LendingMarket.sol#213-226) ignores return value by baseToken.transfer(msg.sender,amount) (src/LendingMarket.sol#223)
+LendingMarket.repay(uint256) (src/LendingMarket.sol#228-243) ignores return value by baseToken.transferFrom(msg.sender,address(this),amount) (src/LendingMarket.sol#237)
+LendingMarket.liquidate(address,uint256) (src/LendingMarket.sol#255-280) ignores return value by baseToken.transferFrom(msg.sender,address(this),repayAmount) (src/LendingMarket.sol#276)
+LendingMarket.liquidate(address,uint256) (src/LendingMarket.sol#255-280) ignores return value by collateralToken.transfer(msg.sender,seizeAmount) (src/LendingMarket.sol#277)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#unchecked-transfer
+INFO:Detectors:
+Detector: divide-before-multiply
+LendingMarket.accrueInterest() (src/LendingMarket.sol#133-150) performs a multiplication on the result of a division:
+	- accruedToSuppliers = (borrowsBefore * interest) / FACTOR (src/LendingMarket.sol#145)
+	- baseSupplyIndex += (baseSupplyIndex * accruedToSuppliers) / suppliesBefore (src/LendingMarket.sol#146)
+LendingMarket.isHealthy(address) (src/LendingMarket.sol#312-320) performs a multiplication on the result of a division:
+	- collateralValue = (collateralBalance[account] * getPrice()) / FACTOR (src/LendingMarket.sol#316)
+	- borrowingPower = (collateralValue * collateralFactor) / FACTOR (src/LendingMarket.sol#317)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#divide-before-multiply
+INFO:Detectors:
+Detector: incorrect-equality
+LendingMarket.accrueInterest() (src/LendingMarket.sol#133-150) uses a dangerous strict equality:
+	- elapsed == 0 (src/LendingMarket.sol#135)
+LendingMarket.isHealthy(address) (src/LendingMarket.sol#312-320) uses a dangerous strict equality:
+	- debt == 0 (src/LendingMarket.sol#314)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#dangerous-strict-equalities
+INFO:Detectors:
+Detector: reentrancy-no-eth
+Reentrancy in LendingMarket.repay(uint256) (src/LendingMarket.sol#228-243):
+	External calls:
+	- baseToken.transferFrom(msg.sender,address(this),amount) (src/LendingMarket.sol#237)
+	State variables written after the call(s):
+	- borrowPrincipal[msg.sender] -= principal (src/LendingMarket.sol#239)
+	LendingMarket.borrowPrincipal (src/LendingMarket.sol#54) can be used in cross function reentrancies:
+	- LendingMarket.borrow(uint256) (src/LendingMarket.sol#213-226)
+	- LendingMarket.borrowBalanceOf(address) (src/LendingMarket.sol#286-288)
+	- LendingMarket.borrowPrincipal (src/LendingMarket.sol#54)
+	- LendingMarket.liquidate(address,uint256) (src/LendingMarket.sol#255-280)
+	- LendingMarket.repay(uint256) (src/LendingMarket.sol#228-243)
+	- totalBorrowPrincipal -= principal (src/LendingMarket.sol#240)
+	LendingMarket.totalBorrowPrincipal (src/LendingMarket.sol#44) can be used in cross function reentrancies:
+	- LendingMarket.accrueInterest() (src/LendingMarket.sol#133-150)
+	- LendingMarket.borrow(uint256) (src/LendingMarket.sol#213-226)
+	- LendingMarket.liquidate(address,uint256) (src/LendingMarket.sol#255-280)
+	- LendingMarket.repay(uint256) (src/LendingMarket.sol#228-243)
+	- LendingMarket.totalBorrowPrincipal (src/LendingMarket.sol#44)
+	- LendingMarket.utilization() (src/LendingMarket.sol#305-309)
+Reentrancy in LendingMarket.supply(uint256) (src/LendingMarket.sol#156-167):
+	External calls:
+	- baseToken.transferFrom(msg.sender,address(this),amount) (src/LendingMarket.sol#160)
+	State variables written after the call(s):
+	- totalSupplyPrincipal += principal (src/LendingMarket.sol#164)
+	LendingMarket.totalSupplyPrincipal (src/LendingMarket.sol#43) can be used in cross function reentrancies:
+	- LendingMarket.accrueInterest() (src/LendingMarket.sol#133-150)
+	- LendingMarket.supply(uint256) (src/LendingMarket.sol#156-167)
+	- LendingMarket.totalSupplyPrincipal (src/LendingMarket.sol#43)
+	- LendingMarket.utilization() (src/LendingMarket.sol#305-309)
+	- LendingMarket.withdraw(uint256) (src/LendingMarket.sol#169-182)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-2
+INFO:Detectors:
+Detector: unused-return
+LendingMarket.getPrice() (src/LendingMarket.sol#323-326) ignores return value by (None,answer,None,None,None) = oracle.latestRoundData() (src/LendingMarket.sol#324)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#unused-return
+INFO:Detectors:
+Detector: events-access
+LendingMarket.setAdmin(address) (src/LendingMarket.sol#371-374) should emit an event for: 
+	- admin = newAdmin (src/LendingMarket.sol#373) 
+	- admin = newAdmin (src/LendingMarket.sol#373) 
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#missing-events-access-control
+INFO:Detectors:
+Detector: missing-zero-check
+LendingMarket.initialize(address,address,address,address,address,uint256,uint256,uint256).admin_ (src/LendingMarket.sol#101) lacks a zero-check on :
+		- admin = admin_ (src/LendingMarket.sol#113)
+LendingMarket.initialize(address,address,address,address,address,uint256,uint256,uint256).pauseGuardian_ (src/LendingMarket.sol#102) lacks a zero-check on :
+		- pauseGuardian = pauseGuardian_ (src/LendingMarket.sol#114)
+TransparentUpgradeableProxy.constructor(address,address,bytes).implementation_ (src/TransparentUpgradeableProxy.sol#21) lacks a zero-check on :
+		- (ok,ret) = implementation_.delegatecall(initData) (src/TransparentUpgradeableProxy.sol#26)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#missing-zero-address-validation
+INFO:Detectors:
+Detector: reentrancy-benign
+Reentrancy in LendingMarket.supply(uint256) (src/LendingMarket.sol#156-167):
+	External calls:
+	- baseToken.transferFrom(msg.sender,address(this),amount) (src/LendingMarket.sol#160)
+	State variables written after the call(s):
+	- supplyPrincipal[msg.sender] += principal (src/LendingMarket.sol#163)
+Reentrancy in LendingMarket.supplyCollateral(uint256) (src/LendingMarket.sol#188-197):
+	External calls:
+	- collateralToken.transferFrom(msg.sender,address(this),amount) (src/LendingMarket.sol#191)
+	State variables written after the call(s):
+	- collateralBalance[msg.sender] += amount (src/LendingMarket.sol#193)
+	- totalCollateral += amount (src/LendingMarket.sol#194)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-3
+INFO:Detectors:
+Detector: reentrancy-events
+Reentrancy in LendingMarket.borrow(uint256) (src/LendingMarket.sol#213-226):
+	External calls:
+	- baseToken.transfer(msg.sender,amount) (src/LendingMarket.sol#223)
+	Event emitted after the call(s):
+	- Borrow(msg.sender,amount) (src/LendingMarket.sol#225)
+Reentrancy in LendingMarket.liquidate(address,uint256) (src/LendingMarket.sol#255-280):
+	External calls:
+	- baseToken.transferFrom(msg.sender,address(this),repayAmount) (src/LendingMarket.sol#276)
+	- collateralToken.transfer(msg.sender,seizeAmount) (src/LendingMarket.sol#277)
+	Event emitted after the call(s):
+	- Liquidate(msg.sender,borrower,repayAmount,seizeAmount) (src/LendingMarket.sol#279)
+Reentrancy in LendingMarket.repay(uint256) (src/LendingMarket.sol#228-243):
+	External calls:
+	- baseToken.transferFrom(msg.sender,address(this),amount) (src/LendingMarket.sol#237)
+	Event emitted after the call(s):
+	- Repay(msg.sender,amount) (src/LendingMarket.sol#242)
+Reentrancy in LendingMarket.supply(uint256) (src/LendingMarket.sol#156-167):
+	External calls:
+	- baseToken.transferFrom(msg.sender,address(this),amount) (src/LendingMarket.sol#160)
+	Event emitted after the call(s):
+	- Supply(msg.sender,amount) (src/LendingMarket.sol#166)
+Reentrancy in LendingMarket.supplyCollateral(uint256) (src/LendingMarket.sol#188-197):
+	External calls:
+	- collateralToken.transferFrom(msg.sender,address(this),amount) (src/LendingMarket.sol#191)
+	Event emitted after the call(s):
+	- SupplyCollateral(msg.sender,amount) (src/LendingMarket.sol#196)
+Reentrancy in LendingMarket.withdraw(uint256) (src/LendingMarket.sol#169-182):
+	External calls:
+	- baseToken.transfer(msg.sender,amount) (src/LendingMarket.sol#179)
+	Event emitted after the call(s):
+	- Withdraw(msg.sender,amount) (src/LendingMarket.sol#181)
+Reentrancy in LendingMarket.withdrawCollateral(uint256) (src/LendingMarket.sol#199-211):
+	External calls:
+	- collateralToken.transfer(msg.sender,amount) (src/LendingMarket.sol#208)
+	Event emitted after the call(s):
+	- WithdrawCollateral(msg.sender,amount) (src/LendingMarket.sol#210)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-4
+INFO:Detectors:
+Detector: low-level-calls
+Low level call in TransparentUpgradeableProxy.constructor(address,address,bytes) (src/TransparentUpgradeableProxy.sol#21-31):
+	- (ok,ret) = implementation_.delegatecall(initData) (src/TransparentUpgradeableProxy.sol#26)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#low-level-calls
+INFO:Slither:. analyzed (6 contracts with 97 detectors), 29 result(s) found
