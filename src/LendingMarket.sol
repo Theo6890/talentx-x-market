@@ -28,6 +28,7 @@ contract LendingMarket {
     // -------------------------------------------------------------------------------------------
 
     // --- roles and wiring ---
+    /// @custom:audit-question Is it made on purpose that Proxy owner and owner here can be different?
     address public admin;
     address public pauseGuardian;
     IPriceOracle public oracle;
@@ -63,6 +64,7 @@ contract LendingMarket {
     // Events
     // -------------------------------------------------------------------------------------------
 
+    /// @custom:audit-note any event where tokens are being transacted could be added to events
     event Supply(address indexed account, uint256 amount);
     event Withdraw(address indexed account, uint256 amount);
     event SupplyCollateral(address indexed account, uint256 amount);
@@ -83,6 +85,8 @@ contract LendingMarket {
         _;
     }
 
+    /// @audit:custom-access Guardian AND admin can access an `onlyGuardian()` restricted function
+    /// @audit:custom-question is it missed named or a flaw? a flaw apparently: A separate pause guardian exists so the market can be stopped quickly without reaching for the admin key.
     modifier onlyGuardian() {
         require(msg.sender == pauseGuardian || msg.sender == admin, "not guardian");
         _;
@@ -97,6 +101,7 @@ contract LendingMarket {
     // Initialization
     // -------------------------------------------------------------------------------------------
 
+    /// @custom:audit-access Can only be initialized once and for all. There are no version controllers like Openzeppelin did, effectively making the contract non upgradeable.
     function initialize(
         address admin_,
         address pauseGuardian_,
@@ -130,6 +135,7 @@ contract LendingMarket {
     // -------------------------------------------------------------------------------------------
 
     /// @notice Advances both indices to the current block timestamp.
+    /// @custom:audit-note This looks right in terms of access, anyone should be able to call it, including this contract
     function accrueInterest() public {
         uint256 elapsed = block.timestamp - lastAccrualTime;
         if (elapsed == 0) return;
@@ -153,6 +159,7 @@ contract LendingMarket {
     // Supplier actions
     // -------------------------------------------------------------------------------------------
 
+    /// @custom:audit-note looks lright at first glance with a well abstracted function. If any bugs this shall be in underlying functions.
     function supply(uint256 amount) external whenNotPaused {
         require(amount > 0, "zero amount");
         accrueInterest();
@@ -309,17 +316,21 @@ contract LendingMarket {
     }
 
     /// @notice True when the account's borrowing power covers its debt.
+    ///  @custom:audit-logic Return check looks ok at first glance, the issue if any shall be in underlying called functions
     function isHealthy(address account) public view returns (bool) {
         uint256 debt = borrowBalanceOf(account);
         if (debt == 0) return true;
 
+        /// @custom:info price is of 1e18, FACTOR = 1e18, `collateralValue` is then in token decimals
         uint256 collateralValue = (collateralBalance[account] * getPrice()) / FACTOR;
+        /// @custom:info `collateralFactor` is of FACTOR decimals, `borrowingPower` is then in token decimals
         uint256 borrowingPower = (collateralValue * collateralFactor) / FACTOR;
 
         return borrowingPower >= debt;
     }
 
     /// @notice Collateral price in base-asset terms, 1e18 scaled.
+    /// @custom:audit-math Dangerous conversion, use Math lib from Openzepplin to convert int to uint to avoid overflow, even 0.8.x avoid overflows as this is critical data
     function getPrice() public view returns (uint256) {
         (, int256 answer,,,) = oracle.latestRoundData();
         return uint256(answer);
@@ -329,10 +340,12 @@ contract LendingMarket {
     // Internal accounting helpers
     // -------------------------------------------------------------------------------------------
 
+    /// @custom:audit-note looks ok according to README.md at first glance, the decimals are correctly handled
     function _principalForBorrow(uint256 amount) internal view returns (uint256) {
         return (amount * FACTOR) / baseBorrowIndex;
     }
 
+    /// @custom:audit-note looks ok according to README.md at first glance, the decimals are correctly handled
     function _principalForSupply(uint256 amount) internal view returns (uint256) {
         return (amount * FACTOR) / baseSupplyIndex;
     }
@@ -341,6 +354,12 @@ contract LendingMarket {
     // Administration
     // -------------------------------------------------------------------------------------------
 
+    /// @custom:audit-access According to README.md, guardian solelty `stop the market in an incident`
+    /// @custom:audit-question Is this a flaw or stale documentation?
+    /// @custom:audit-info an oracle is a critical point of service of a lending market, better be timelocked, at the very least multisig.
+    /// @custom:audit-question The address is a simple oracle implementation like Chainlink. It does not verify data staleness, nor price deviation.
+    /// This favours oracle attacks (even simple one). Consider adding staleness check (up to 1h is okay.ish). Add a circuit breaker for price deviation:
+    /// 5% deviation for stablecoins, 20-30% for other tokens. Also think about using multiple oracle source like Chainlink + Pyth + Stork + a TWAP (min 30min for TWAP)
     function setOracle(address newOracle) external onlyGuardian {
         require(newOracle != address(0), "zero oracle");
         oracle = IPriceOracle(newOracle);
