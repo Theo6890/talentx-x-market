@@ -44,8 +44,8 @@ contract LendingMarketTest is Test {
                 address(wethOracle),
                 address(base),
                 address(weth),
-                0.80e18,
-                1.10e18,
+                0.8e18,
+                1.1e18,
                 RATE_PER_SECOND
             )
         );

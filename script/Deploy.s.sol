@@ -28,7 +28,7 @@ contract Deploy {
         weth = new MockERC20("Wrapped Ether", "WETH", 18);
         wethOracle = new MockOracle(2_000e18);
 
-        wethMarket = _deployMarket(address(weth), address(wethOracle), 0.80e18, 1.10e18);
+        wethMarket = _deployMarket(address(weth), address(wethOracle), 0.8e18, 1.1e18);
     }
 
     function _deployMarket(address collateral, address oracle, uint256 collateralFactor, uint256 incentive)

@@ -347,10 +347,11 @@ contract LendingMarket {
         emit OracleUpdated(newOracle);
     }
 
-    function setParameters(uint256 collateralFactor_, uint256 liquidationIncentive_, uint256 borrowRatePerSecond_)
-        external
-        onlyAdmin
-    {
+    function setParameters(
+        uint256 collateralFactor_,
+        uint256 liquidationIncentive_,
+        uint256 borrowRatePerSecond_
+    ) external onlyAdmin {
         require(collateralFactor_ <= FACTOR, "cf too high");
         require(liquidationIncentive_ >= FACTOR, "incentive below par");
 
